@@ -30,11 +30,13 @@ where
     }
 }
 
-#[must_use] pub fn binary_dot_product(
+#[must_use]
+pub fn binary_dot_product(
     i: usize,
     j: usize,
 ) -> usize {
-    (0..usize::BITS).fold(0, |acc, k| (i & j) >> k & 1 ^ acc)
+    let prod = i & j;
+    (0..usize::BITS).fold(0, |acc, k| prod >> k & 1 ^ acc)
 }
 
 /// Naive implementation of Walsh-Hadamard transform of slice `data`.
