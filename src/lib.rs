@@ -18,9 +18,7 @@
 //!     a /= 2
 //!     h *= 2
 
-pub fn fwht(input: &[i32]) -> Vec<i32> {
-    input.to_vec()
-}
+pub fn fwht(data: &mut [i32]) {}
 
 #[cfg(test)]
 mod tests {
@@ -28,10 +26,10 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let input = vec![1, 0, 1, 0, 0, 1, 1, 0];
+        let data = &mut vec![1, 0, 1, 0, 0, 1, 1, 0];
         let expec = vec![4, 2, 0, -2, 0, 2, 0, 2];
 
-        let result = fwht(&input);
-        assert_eq!(result, expec);
+        fwht(data);
+        assert_eq!(*data, expec);
     }
 }
