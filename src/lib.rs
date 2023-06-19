@@ -18,7 +18,23 @@
 //!     a /= 2
 //!     h *= 2
 
-pub fn fwht(data: &mut [i32]) {}
+/// In-place fast Walsh-Hadamard transform of slice `data`.
+pub fn fwht(data: &mut [i32]) {
+    let mut h = 1;
+    let length = data.len();
+    while h < length {
+        // perform FWHT
+        for i in (0..length).step_by(h * 2) {
+            for j in i..i + h {
+                let x = data[j];
+                let y = data[j + h];
+                data[j] = x + y;
+                data[j + h] = x - y;
+            }
+        }
+        h *= 2;
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -27,9 +43,9 @@ mod tests {
     #[test]
     fn it_works() {
         let data = &mut vec![1, 0, 1, 0, 0, 1, 1, 0];
-        let expec = vec![4, 2, 0, -2, 0, 2, 0, 2];
+        let expected = vec![4, 2, 0, -2, 0, 2, 0, 2];
 
         fwht(data);
-        assert_eq!(*data, expec);
+        assert_eq!(*data, expected);
     }
 }
