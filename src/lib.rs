@@ -30,7 +30,7 @@ where
     }
 }
 
-pub fn binary_dot_product(
+#[must_use] pub fn binary_dot_product(
     i: usize,
     j: usize,
 ) -> usize {
@@ -72,7 +72,7 @@ mod tests {
         let data = &mut vec![1, 0, 1, 0, 0, 1, 1, 0];
         let expected = vec![4, 2, 0, -2, 0, 2, 0, 2];
 
-        naive_wht(data, &mut vec![0; 8]);
+        naive_wht(data, &mut [0; 8]);
         assert_eq!(*data, expected);
     }
 
@@ -119,10 +119,10 @@ mod tests {
         assert_eq!(binary_dot_product(0b1011, 0b1100), 1);
         assert_eq!(binary_dot_product(0b1011, 0b1010), 0);
 
-        assert_eq!(binary_dot_product(0b101001, 0b101001), 1);
-        assert_eq!(binary_dot_product(0b10100001, 0b10100001), 1);
-        assert_eq!(binary_dot_product(0b0010100001, 0b0010100001), 1);
+        assert_eq!(binary_dot_product(0b10_1001, 0b10_1001), 1);
+        assert_eq!(binary_dot_product(0b1010_0001, 0b1010_0001), 1);
+        assert_eq!(binary_dot_product(0b00_1010_0001, 0b00_1010_0001), 1);
 
-        assert_eq!(binary_dot_product(0b0000100001, 0b0010100001), 0);
+        assert_eq!(binary_dot_product(0b00_0010_0001, 0b00_1010_0001), 0);
     }
 }
