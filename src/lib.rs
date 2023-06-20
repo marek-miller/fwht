@@ -82,6 +82,24 @@ where
     }
 }
 
+/// data.len() is assumed to be divisible by 4.
+/// scratch.len() >= data.len()/4
+pub fn fwht4(
+    data: &mut [i64],
+    scratch: &mut [Simd<i64, 4>],
+) {
+    for (i, chunk) in data.as_chunks_mut().0.iter_mut().enumerate() {
+        wht4(chunk);
+        scratch[i] = Simd::from(*chunk);
+    }
+    fwht(scratch);
+    for i in 0..data.len() / 4 {
+        for j in 0..4 {
+            data[i * 4 + j] = scratch[i][j]
+        }
+    }
+}
+
 /// data.len() is assumed to be divisible by 8.
 /// scratch.len() >= data.len()/8
 pub fn fwht8(
@@ -202,6 +220,28 @@ mod tests {
 
         fwht8(data, &mut scratch);
         assert_eq!(*data, expected);
+    }
+
+    #[test]
+    fn fwht4_01() {
+        let mut arr = [0i32; 1024];
+        rand::thread_rng().fill(&mut arr[..]);
+
+        let data1 = &mut arr.iter().map(|&x| x as i64).collect::<Vec<_>>();
+        let data2 = &mut data1.to_owned();
+        let data3 = &mut data1.to_owned();
+
+        let mut naive = Naive::new();
+        naive.init(data1);
+
+        naive.process(data1);
+        fwht(data2);
+        let frame = Simd::from([0; 4]);
+        let mut scratch = vec![frame; 256];
+        fwht4(data3, &mut scratch);
+
+        assert_eq!(data1, data2);
+        assert_eq!(data1, data3);
     }
 
     #[test]

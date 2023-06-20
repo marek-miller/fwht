@@ -8,6 +8,7 @@ use criterion::{
 };
 use fwht::{
     fwht,
+    fwht4,
     fwht8,
     wht8,
     Naive,
@@ -48,13 +49,21 @@ fn inlined_wht8_01() {
 // }
 
 fn fast_wht_02() {
-    let data = &mut vec![1; 4096*8];
+    let data = &mut vec![1; 4096 * 8];
 
     fwht(data);
 }
 
+fn simd_fwht4_02() {
+    let data = &mut vec![1; 4096 * 8];
+
+    let frame = Simd::from([0; 4]);
+    let mut scratch = vec![frame; 4096 * 2];
+    fwht4(data, &mut scratch);
+}
+
 fn simd_fwht8_02() {
-    let data = &mut vec![1; 4096*8];
+    let data = &mut vec![1; 4096 * 8];
 
     let frame = Simd::from([0; 8]);
     let mut scratch = vec![frame; 4096];
@@ -67,7 +76,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("inlined8", |b| b.iter(|| inlined_wht8_01()));
     // c.bench_function("naive2", |b| b.iter(|| naive_wht_02()));
     c.bench_function("fast2", |b| b.iter(|| fast_wht_02()));
-    c.bench_function("simd2", |b| b.iter(|| simd_fwht8_02()));
+    c.bench_function("simd_fwht4", |b| b.iter(|| simd_fwht4_02()));
+    c.bench_function("simd_fwht8", |b| b.iter(|| simd_fwht8_02()));
 }
 
 criterion_group!(benches, criterion_benchmark);
