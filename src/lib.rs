@@ -79,7 +79,7 @@ mod tests {
     }
 
     #[test]
-    fn it_works() {
+    fn fwht_01() {
         let data = &mut vec![1, 0, 1, 0, 0, 1, 1, 0];
         let expected = vec![4, 2, 0, -2, 0, 2, 0, 2];
 
