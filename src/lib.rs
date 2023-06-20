@@ -13,10 +13,7 @@ use std::{
         Sub,
         SubAssign,
     },
-    simd::{
-        Simd,
-        SimdElement,
-    },
+    simd::Simd,
 };
 
 #[inline]
@@ -86,17 +83,19 @@ where
 }
 
 /// data.len() is assumed to be divisible by 8.
-pub fn fwht8(data: &mut [i64]) {
-    let buf_len = data.len() / 8;
-    let mut buf = Vec::with_capacity(buf_len);
-    for chunk in data.as_chunks_mut().0 {
+/// scratch.len() >= data.len()/8
+pub fn fwht8(
+    data: &mut [i64],
+    scratch: &mut [Simd<i64, 8>],
+) {
+    for (i, chunk) in data.as_chunks_mut().0.iter_mut().enumerate() {
         wht8(chunk);
-        buf.push(Simd::from(*chunk));
+        scratch[i] = Simd::from(*chunk);
     }
-    fwht(&mut buf);
-    for i in 0..buf_len {
+    fwht(scratch);
+    for i in 0..data.len() / 8 {
         for j in 0..8 {
-            data[i * 8 + j] = buf[i][j]
+            data[i * 8 + j] = scratch[i][j]
         }
     }
 }
@@ -198,7 +197,10 @@ mod tests {
         let data = &mut [1, 0, 1, 0, 0, 1, 1, 0];
         let expected = [4, 2, 0, -2, 0, 2, 0, 2];
 
-        fwht8(data);
+        let frame = Simd::from([0; 8]);
+        let mut scratch = vec![frame; 8];
+
+        fwht8(data, &mut scratch);
         assert_eq!(*data, expected);
     }
 
@@ -216,7 +218,9 @@ mod tests {
 
         naive.process(data1);
         fwht(data2);
-        fwht8(data3);
+        let frame = Simd::from([0; 8]);
+        let mut scratch = vec![frame; 256];
+        fwht8(data3, &mut scratch);
 
         assert_eq!(data1, data2);
         assert_eq!(data1, data3);

@@ -1,3 +1,6 @@
+#![feature(portable_simd)]
+use std::simd::Simd;
+
 use criterion::{
     criterion_group,
     criterion_main,
@@ -5,8 +8,9 @@ use criterion::{
 };
 use fwht::{
     fwht,
+    fwht8,
     wht8,
-    Naive, fwht8,
+    Naive,
 };
 
 fn naive_wht_01() {
@@ -44,18 +48,18 @@ fn inlined_wht8_01() {
 // }
 
 fn fast_wht_02() {
-    let data = &mut vec![1; 4096];
+    let data = &mut vec![1; 4096*8];
 
     fwht(data);
 }
 
-
 fn simd_fwht8_02() {
-    let data = &mut vec![1; 4096];
+    let data = &mut vec![1; 4096*8];
 
-    fwht8(data);
+    let frame = Simd::from([0; 8]);
+    let mut scratch = vec![frame; 4096];
+    fwht8(data, &mut scratch);
 }
-
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("naive1", |b| b.iter(|| naive_wht_01()));
