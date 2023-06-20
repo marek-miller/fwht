@@ -14,7 +14,10 @@ use std::{
         SubAssign,
     },
     simd::Simd,
+    thread,
 };
+
+use rayon::prelude::*;
 
 #[inline]
 pub fn wht2<T>(data: &mut [T; 2])
@@ -63,11 +66,16 @@ where
 }
 
 /// In-place fast Walsh-Hadamard transform of slice `data`.
-pub fn fwht<T>(data: &mut [T])
-where
+/// starting from depth `h`.
+///
+/// For full Hadamard transform, set `h = 1`
+pub fn fwht_oneslice<T>(
+    data: &mut [T],
+    h: usize,
+) where
     T: Add<T, Output = T> + Sub<T, Output = T> + Copy,
 {
-    let mut h = 1;
+    let mut h = h;
     let l = data.len();
     while h < l {
         for i in (0..l).step_by(h * 2) {
@@ -82,10 +90,61 @@ where
     }
 }
 
+/// In-place fast Walsh-Hadamard transform of slice `data`.
+/// starting from depth `h`.
+///
+/// For full Hadamard transform, set `h = 1`
+pub fn fwht<T>(
+    data: &mut [T],
+    h: usize,
+) where
+    T: Add<T, Output = T> + Sub<T, Output = T> + Copy + Send + Sync,
+{
+    let mut h = h;
+    let l = data.len();
+    while h < l {
+        data.chunks_mut(h * 2).for_each(|chunk| {
+            for j in 0..h {
+                let x = chunk[j];
+                let y = chunk[j + h];
+                chunk[j] = x + y;
+                chunk[j + h] = x - y;
+            }
+        });
+        h *= 2;
+    }
+}
+
+
+/// In-place fast Walsh-Hadamard transform of slice `data`.
+/// starting from depth `h`.
+///
+/// For full Hadamard transform, set `h = 1`
+pub fn fwht_par<T>(
+    data: &mut [T],
+    h: usize,
+) where
+    T: Add<T, Output = T> + Sub<T, Output = T> + Copy + Send + Sync,
+{
+    let mut h = h;
+    let l = data.len();
+    while h < l {
+        data.par_chunks_mut(h * 2).for_each(|chunk| {
+            for j in 0..h {
+                let x = chunk[j];
+                let y = chunk[j + h];
+                chunk[j] = x + y;
+                chunk[j + h] = x - y;
+            }
+        });
+        h *= 2;
+    }
+}
+
 /// data.len() is assumed to be divisible by 4.
 /// scratch.len() >= data.len()/4
 #[inline]
-pub fn fwht4(
+pub fn fwht4_simd(
     data: &mut [i64],
     scratch: &mut [Simd<i64, 4>],
 ) {
@@ -93,10 +152,11 @@ pub fn fwht4(
         wht4(chunk);
         scratch[i] = Simd::from(*chunk);
     }
-    fwht(scratch);
+    fwht(scratch, 1);
     for i in 0..data.len() / 4 {
+        let arr = scratch[i].as_array();
         for j in 0..4 {
-            data[i * 4 + j] = scratch[i][j]
+            data[i * 4 + j] = arr[j];
         }
     }
 }
@@ -104,7 +164,7 @@ pub fn fwht4(
 /// data.len() is assumed to be divisible by 8.
 /// scratch.len() >= data.len()/8
 #[inline]
-pub fn fwht8(
+pub fn fwht8_simd(
     data: &mut [i64],
     scratch: &mut [Simd<i64, 8>],
 ) {
@@ -112,12 +172,29 @@ pub fn fwht8(
         wht8(chunk);
         scratch[i] = Simd::from(*chunk);
     }
-    fwht(scratch);
+    fwht(scratch, 1);
     for i in 0..data.len() / 8 {
+        let arr = scratch[i].as_array();
         for j in 0..8 {
-            data[i * 8 + j] = scratch[i][j]
+            data[i * 8 + j] = arr[j];
         }
     }
+}
+
+#[inline]
+pub fn fwht4_inl(data: &mut [i64]) {
+    for chunk in data.as_chunks_mut().0 {
+        wht4(chunk);
+    }
+    fwht(data, 4);
+}
+
+#[inline]
+pub fn fwht8_inl(data: &mut [i64]) {
+    for chunk in data.as_chunks_mut().0 {
+        wht8(chunk);
+    }
+    fwht(data, 8);
 }
 
 #[must_use]
@@ -199,7 +276,7 @@ mod tests {
         let data = &mut vec![1, 0, 1, 0, 0, 1, 1, 0];
         let expected = vec![4, 2, 0, -2, 0, 2, 0, 2];
 
-        fwht(data);
+        fwht(data, 1);
         assert_eq!(*data, expected);
     }
 
@@ -213,19 +290,19 @@ mod tests {
     }
 
     #[test]
-    fn fwht8_01() {
+    fn fwht8_simd_01() {
         let data = &mut [1, 0, 1, 0, 0, 1, 1, 0];
         let expected = [4, 2, 0, -2, 0, 2, 0, 2];
 
         let frame = Simd::from([0; 8]);
         let mut scratch = vec![frame; 8];
 
-        fwht8(data, &mut scratch);
+        fwht8_simd(data, &mut scratch);
         assert_eq!(*data, expected);
     }
 
     #[test]
-    fn fwht4_01() {
+    fn fwht4_simd_01() {
         let mut arr = [0i32; 1024];
         rand::thread_rng().fill(&mut arr[..]);
 
@@ -237,17 +314,17 @@ mod tests {
         naive.init(data1);
 
         naive.process(data1);
-        fwht(data2);
+        fwht(data2, 1);
         let frame = Simd::from([0; 4]);
         let mut scratch = vec![frame; 256];
-        fwht4(data3, &mut scratch);
+        fwht4_simd(data3, &mut scratch);
 
         assert_eq!(data1, data2);
         assert_eq!(data1, data3);
     }
 
     #[test]
-    fn fwht8_02() {
+    fn fwht8_simd_02() {
         let mut arr = [0i32; 1024];
         rand::thread_rng().fill(&mut arr[..]);
 
@@ -259,10 +336,10 @@ mod tests {
         naive.init(data1);
 
         naive.process(data1);
-        fwht(data2);
+        fwht(data2, 1);
         let frame = Simd::from([0; 8]);
         let mut scratch = vec![frame; 256];
-        fwht8(data3, &mut scratch);
+        fwht8_simd(data3, &mut scratch);
 
         assert_eq!(data1, data2);
         assert_eq!(data1, data3);
@@ -307,5 +384,57 @@ mod tests {
         assert_eq!(binary_dot_product(0b00_1010_0001, 0b00_1010_0001), 1);
 
         assert_eq!(binary_dot_product(0b00_0010_0001, 0b00_1010_0001), 0);
+    }
+
+    #[test]
+    fn fwht4_inl_01() {
+        let data = &mut [1, 0, 1, 0, 0, 1, 1, 0];
+        let expected = [4, 2, 0, -2, 0, 2, 0, 2];
+
+        fwht4_inl(data);
+        assert_eq!(*data, expected);
+    }
+
+    #[test]
+    fn fwht4_inl_02() {
+        let mut arr = [0i32; 1024];
+        rand::thread_rng().fill(&mut arr[..]);
+
+        let data1 = &mut arr.iter().map(|&x| x as i64).collect::<Vec<_>>();
+        let data2 = &mut data1.to_owned();
+
+        let mut naive = Naive::new();
+        naive.init(data1);
+
+        naive.process(data1);
+        fwht4_inl(data2);
+
+        assert_eq!(data1, data2);
+    }
+
+    #[test]
+    fn fwht8_inl_01() {
+        let data = &mut [1, 0, 1, 0, 0, 1, 1, 0];
+        let expected = [4, 2, 0, -2, 0, 2, 0, 2];
+
+        fwht8_inl(data);
+        assert_eq!(*data, expected);
+    }
+
+    #[test]
+    fn fwht8_inl_02() {
+        let mut arr = [0i32; 1024];
+        rand::thread_rng().fill(&mut arr[..]);
+
+        let data1 = &mut arr.iter().map(|&x| x as i64).collect::<Vec<_>>();
+        let data2 = &mut data1.to_owned();
+
+        let mut naive = Naive::new();
+        naive.init(data1);
+
+        naive.process(data1);
+        fwht8_inl(data2);
+
+        assert_eq!(data1, data2);
     }
 }
