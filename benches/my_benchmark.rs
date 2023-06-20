@@ -5,13 +5,16 @@ use criterion::{
 };
 use fwht::{
     fwht,
-    naive_wht,
+    wht8,
+    Naive,
 };
 
 fn naive_wht_01() {
     let data = &mut vec![1, 0, 1, 0, 0, 1, 1, 0];
+    let mut transform = Naive::new();
+    transform.init(data);
 
-    naive_wht(data, &mut [0; 8]);
+    transform.process(data);
 }
 
 fn fast_wht_01() {
@@ -20,10 +23,18 @@ fn fast_wht_01() {
     fwht(data);
 }
 
+fn inlined_wht8_01() {
+    let data = &mut [1, 0, 1, 0, 0, 1, 1, 0];
+
+    wht8(data);
+}
+
 fn naive_wht_02() {
     let data = &mut vec![1; 1024];
+    let mut transform = Naive::new();
+    transform.init(data);
 
-    naive_wht(data, &mut [0; 1024]);
+    transform.process(data);
 }
 
 fn fast_wht_02() {
@@ -34,8 +45,10 @@ fn fast_wht_02() {
 
 fn naive_wht_03() {
     let data = &mut vec![1; 4096];
+    let mut transform = Naive::new();
+    transform.init(data);
 
-    naive_wht(data, &mut [0; 4096]);
+    transform.process(data);
 }
 
 fn fast_wht_03() {
@@ -47,6 +60,7 @@ fn fast_wht_03() {
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("naive1", |b| b.iter(|| naive_wht_01()));
     c.bench_function("fast1", |b| b.iter(|| fast_wht_01()));
+    c.bench_function("inlined8", |b| b.iter(|| inlined_wht8_01()));
     c.bench_function("naive2", |b| b.iter(|| naive_wht_02()));
     c.bench_function("fast2", |b| b.iter(|| fast_wht_02()));
     c.bench_function("naive3", |b| b.iter(|| naive_wht_03()));
