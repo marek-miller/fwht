@@ -84,6 +84,7 @@ where
 
 /// data.len() is assumed to be divisible by 4.
 /// scratch.len() >= data.len()/4
+#[inline]
 pub fn fwht4(
     data: &mut [i64],
     scratch: &mut [Simd<i64, 4>],
@@ -102,6 +103,7 @@ pub fn fwht4(
 
 /// data.len() is assumed to be divisible by 8.
 /// scratch.len() >= data.len()/8
+#[inline]
 pub fn fwht8(
     data: &mut [i64],
     scratch: &mut [Simd<i64, 8>],

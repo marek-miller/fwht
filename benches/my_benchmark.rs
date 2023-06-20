@@ -49,24 +49,24 @@ fn inlined_wht8_01() {
 // }
 
 fn fast_wht_02() {
-    let data = &mut vec![1; 4096 * 8];
+    let data = &mut vec![1; 1024];
 
     fwht(data);
 }
 
 fn simd_fwht4_02() {
-    let data = &mut vec![1; 4096 * 8];
+    let data = &mut vec![1; 1024];
 
     let frame = Simd::from([0; 4]);
-    let mut scratch = vec![frame; 4096 * 2];
+    let mut scratch = vec![frame; 256];
     fwht4(data, &mut scratch);
 }
 
 fn simd_fwht8_02() {
-    let data = &mut vec![1; 4096 * 8];
+    let data = &mut vec![1; 1024];
 
     let frame = Simd::from([0; 8]);
-    let mut scratch = vec![frame; 4096];
+    let mut scratch = vec![frame; 128];
     fwht8(data, &mut scratch);
 }
 
