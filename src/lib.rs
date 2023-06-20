@@ -3,11 +3,20 @@
 //! Wikipedia: https://en.wikipedia.org/wiki/Fast_Walsh%E2%80%93Hadamard_transform
 //! See also: https://doi.org/10.1109/TC.1976.1674569
 
-use std::ops::{
-    Add,
-    AddAssign,
-    Sub,
-    SubAssign,
+#![feature(portable_simd)]
+#![feature(slice_as_chunks)]
+
+use std::{
+    ops::{
+        Add,
+        AddAssign,
+        Sub,
+        SubAssign,
+    },
+    simd::{
+        Simd,
+        SimdElement,
+    },
 };
 
 #[inline]
@@ -76,6 +85,22 @@ where
     }
 }
 
+/// data.len() is assumed to be divisible by 8.
+pub fn fwht8(data: &mut [i64]) {
+    let buf_len = data.len() / 8;
+    let mut buf = Vec::with_capacity(buf_len);
+    for chunk in data.as_chunks_mut().0 {
+        wht8(chunk);
+        buf.push(Simd::from(*chunk));
+    }
+    fwht(&mut buf);
+    for i in 0..buf_len {
+        for j in 0..8 {
+            data[i * 8 + j] = buf[i][j]
+        }
+    }
+}
+
 #[must_use]
 pub fn binary_dot_product(
     i: usize,
@@ -134,6 +159,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use rand::Rng;
+
     use super::*;
 
     #[test]
@@ -164,6 +191,35 @@ mod tests {
 
         wht8(data);
         assert_eq!(*data, expected);
+    }
+
+    #[test]
+    fn fwht8_01() {
+        let data = &mut [1, 0, 1, 0, 0, 1, 1, 0];
+        let expected = [4, 2, 0, -2, 0, 2, 0, 2];
+
+        fwht8(data);
+        assert_eq!(*data, expected);
+    }
+
+    #[test]
+    fn fwht8_02() {
+        let mut arr = [0i32; 1024];
+        rand::thread_rng().fill(&mut arr[..]);
+
+        let data1 = &mut arr.iter().map(|&x| x as i64).collect::<Vec<_>>();
+        let data2 = &mut data1.to_owned();
+        let data3 = &mut data1.to_owned();
+
+        let mut naive = Naive::new();
+        naive.init(data1);
+
+        naive.process(data1);
+        fwht(data2);
+        fwht8(data3);
+
+        assert_eq!(data1, data2);
+        assert_eq!(data1, data3);
     }
 
     #[test]
