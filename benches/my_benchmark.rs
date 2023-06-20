@@ -11,22 +11,28 @@ use fwht::{
 
 fn naive_wht_01() {
     let data = &mut vec![1, 0, 1, 0, 0, 1, 1, 0];
+    let expected = vec![4, 2, 0, -2, 0, 2, 0, 2];
     let mut transform = Naive::new();
     transform.init(data);
 
     transform.process(data);
+    assert_eq!(*data, expected);
 }
 
 fn fast_wht_01() {
     let data = &mut vec![1, 0, 1, 0, 0, 1, 1, 0];
+    let expected = vec![4, 2, 0, -2, 0, 2, 0, 2];
 
     fwht(data);
+    assert_eq!(*data, expected);
 }
 
 fn inlined_wht8_01() {
     let data = &mut [1, 0, 1, 0, 0, 1, 1, 0];
+    let expected = [4, 2, 0, -2, 0, 2, 0, 2];
 
     wht8(data);
+    assert_eq!(*data, expected);
 }
 
 fn naive_wht_02() {
